@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ChevronRight, ChevronLeft, DollarSign, Home, ShoppingCart, 
-  Baby, Zap, CreditCard, HeartPulse, RefreshCcw, Save
+  Baby, Zap, CreditCard, HeartPulse, RefreshCcw, Save, ShieldCheck
 } from "lucide-react";
 import { useCreatePlan } from "@/hooks/use-plans";
 
@@ -11,7 +11,7 @@ import { useCreatePlan } from "@/hooks/use-plans";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { StepIndicator } from "@/components/StepIndicator";
 import { MoneyInput } from "@/components/MoneyInput";
