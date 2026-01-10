@@ -2,8 +2,15 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Calculator, ShieldCheck, PiggyBank } from "lucide-react";
 import { motion } from "framer-motion";
+import { useEffect } from "react";
+import { analytics } from "@/lib/analytics";
 
 export default function Landing() {
+  // Track landing page view
+  useEffect(() => {
+    analytics.landingViewed();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/5">
       {/* Hero Section */}
@@ -24,8 +31,12 @@ export default function Landing() {
               </p>
               
               <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/calculator" className="w-full sm:w-auto">
-                  <Button size="lg" className="w-full text-lg h-14 px-8 rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">
+                <Link href="/calculator">
+                  <Button 
+                    size="lg" 
+                    className="w-full text-lg h-14 px-8 rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all"
+                    onClick={() => analytics.calculatorStarted()}
+                  >
                     Start Calculation
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
