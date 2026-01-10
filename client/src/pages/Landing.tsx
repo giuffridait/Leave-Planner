@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Calculator, ShieldCheck, PiggyBank } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect } from "react";
-import { analytics } from "@/lib/analytics";
+// Try relative path if @/ doesn't work
+import { analytics } from "../lib/analytics";
 
 export default function Landing() {
   // Track landing page view

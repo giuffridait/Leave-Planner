@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
+// Try relative path if @/ doesn't work
 import { trackPageView } from "./lib/analytics";
 
 import Landing from "@/pages/Landing";

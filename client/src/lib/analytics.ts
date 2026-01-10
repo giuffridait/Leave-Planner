@@ -8,7 +8,7 @@ declare global {
 }
 
 // REPLACE THIS with your actual Google Analytics Measurement ID
-const GA_MEASUREMENT_ID = 'G-XXXXXXXXXX';
+const GA_MEASUREMENT_ID = 'G-CQ0E2Y8NQQ';
 
 export const trackEvent = (
   eventName: string,

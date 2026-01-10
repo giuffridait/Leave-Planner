@@ -6,6 +6,8 @@ import {
   Baby, Zap, CreditCard, HeartPulse, RefreshCcw, Save, ShieldCheck
 } from "lucide-react";
 import { useCreatePlan } from "@/hooks/use-plans";
+// Try relative path if @/ doesn't work
+import { analytics } from "../lib/analytics";
 
 // Components
 import { Button } from "@/components/ui/button";
@@ -75,6 +77,23 @@ export default function Calculator() {
 
   const nextStep = () => {
     if (currentStep < 4) {
+      // Track step completion before moving to next
+      if (currentStep === 1) {
+        analytics.step1Completed({
+          salary: formData.annualSalary,
+          leaveWeeks: formData.leaveWeeks,
+          paidPercent: formData.paidLeavePercent
+        });
+      } else if (currentStep === 2) {
+        const totalExpenses = Object.values(formData.expenses as Record<string, number>).reduce((a, b) => a + b, 0);
+        analytics.step2Completed(totalExpenses);
+      } else if (currentStep === 3) {
+        analytics.step3Completed({
+          childcareType: (formData.childcare as any).type,
+          returnOption: (formData.childcare as any).returnOption
+        });
+      }
+
       setDirection(1);
       setCurrentStep(s => s + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -128,7 +147,10 @@ export default function Calculator() {
         <div className="max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <Link href="/" className="font-bold text-xl tracking-tight font-display text-primary">LeaveCalc</Link>
-            <Button variant="ghost" size="sm" onClick={() => window.location.reload()}>
+            <Button variant="ghost" size="sm" onClick={() => {
+              analytics.startOver();
+              window.location.reload();
+            }}>
               <RefreshCcw className="w-4 h-4 mr-2" /> Reset
             </Button>
           </div>
@@ -235,7 +257,7 @@ function IncomeStep({ data, update }: { data: CreatePlanInput, update: any }) {
           <div className="space-y-2 pt-4">
             <Label className="text-base">Current Savings (Optional)</Label>
             <MoneyInput 
-              value={data.currentSavings} 
+              value={data.currentSavings ?? 0} 
               onValueChange={(val) => update('currentSavings', val)}
               className="text-lg h-14"
             />
@@ -385,8 +407,13 @@ function ResultsStep({ data, onSave, isSaving }: { data: CreatePlanInput, onSave
   const cumulativeGap = monthlyGap * totalLeaveMonths;
   const savingsNeeded = cumulativeGap < 0 ? Math.abs(cumulativeGap) : 0;
   
-  const surplus = data.currentSavings - savingsNeeded;
+  const surplus = (data.currentSavings ?? 0) - savingsNeeded;
   const canAfford = surplus >= 0;
+
+  // Track results view
+  useState(() => {
+    analytics.resultsViewed(savingsNeeded);
+  });
 
   // Scenarios
   const childcareCost = (data.childcare as any).cost;
@@ -422,7 +449,7 @@ function ResultsStep({ data, onSave, isSaving }: { data: CreatePlanInput, onSave
                 <div className="bg-success/20 p-1 rounded-full"><ShieldCheck className="w-5 h-5 text-success" /></div>
                 <div>
                   <span className="font-bold text-success">You are covered!</span>
-                  <p className="mt-1">Your current savings of ${data.currentSavings.toLocaleString()} covers the gap with ${surplus.toLocaleString()} to spare.</p>
+                  <p className="mt-1">Your current savings of ${(data.currentSavings ?? 0).toLocaleString()} covers the gap with ${surplus.toLocaleString()} to spare.</p>
                 </div>
               </div>
             ) : (
