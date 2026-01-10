@@ -11,6 +11,7 @@ import Landing from "@/pages/Landing";
 import Calculator from "@/pages/Calculator";
 import NotFound from "@/pages/not-found";
 
+
 function Router() {
   const [location] = useLocation();
 
@@ -23,9 +24,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/calculator" component={Calculator} />
-      <Route component={NotFound} />
+      <Route component={Landing} />
     </Switch>
-  );
+  );  
 }
 
 function App() {
