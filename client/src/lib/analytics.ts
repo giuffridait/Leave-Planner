@@ -45,29 +45,18 @@ export const analytics = {
   },
 
   // Calculator steps
-  step1Completed: (data: { salary: number; leaveWeeks: number; paidPercent: number }) => {
+  step1Completed: (data: { salary: number; leaveWeeks: number; paidPercent: number; jurisdiction: string }) => {
     trackEvent('step_1_completed', {
       event_category: 'calculator',
+      jurisdiction: data.jurisdiction,
       leave_weeks: data.leaveWeeks,
       paid_percent: data.paidPercent,
       // Don't track exact salary for privacy
     });
   },
 
-  step2Completed: (totalExpenses: number) => {
-    trackEvent('step_2_completed', {
-      event_category: 'calculator',
-      expense_range: totalExpenses > 5000 ? 'high' : totalExpenses > 3000 ? 'medium' : 'low',
-    });
-  },
-
-  step3Completed: (data: { childcareType: string; returnOption: string }) => {
-    trackEvent('step_3_completed', {
-      event_category: 'calculator',
-      childcare_type: data.childcareType,
-      return_option: data.returnOption,
-    });
-  },
+  step2Completed: () => {},
+  step3Completed: () => {},
 
   // Results
   resultsViewed: (savingsNeeded: number) => {

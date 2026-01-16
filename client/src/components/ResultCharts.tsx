@@ -1,26 +1,22 @@
-import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
-} from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-interface GapChartProps {
+interface IncomeBenefitChartProps {
   income: number;
-  expenses: number;
-  gap: number;
+  benefit: number;
 }
 
-export function GapChart({ income, expenses, gap }: GapChartProps) {
+export function IncomeBenefitChart({ income, benefit }: IncomeBenefitChartProps) {
   const data = [
-    { name: 'Income', value: income, fill: '#4A90E2' },
-    { name: 'Expenses', value: expenses, fill: '#F5A623' },
+    { name: 'Normal Income', value: income, fill: '#4A90E2' },
+    { name: 'Leave Benefit', value: benefit, fill: '#7ED321' },
   ];
 
   return (
     <div className="h-[200px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart layout="vertical" data={data} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+        <BarChart layout="vertical" data={data} margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
           <XAxis type="number" hide />
-          <YAxis dataKey="name" type="category" width={80} tick={{fontSize: 12}} />
+          <YAxis dataKey="name" type="category" width={110} tick={{fontSize: 12}} />
           <Tooltip 
             cursor={{fill: 'transparent'}}
             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}

@@ -1,0 +1,527 @@
+# PRD — Policy-Driven Maternity Leave Calculator (US States v1)
+**Platform:** Vercel (serverless)  
+**LLM:** Local model (optional narrator)  
+**Persistence:** None (stateless; no accounts; no saved scenarios)  
+**Version:** v1.0 (US-first)  
+**Date:** 2026-01-16
+
+---
+
+## 1) Problem statement
+Parents planning maternity leave struggle to estimate time off and income impact because:
+- rules vary dramatically by US state,
+- benefits often include caps and eligibility constraints,
+- existing calculators are either generic/opaque or too complex.
+
+**Goal:** A simple, transparent calculator that adapts to US state policies, explains assumptions/caps, and remains stateless.
+
+---
+
+## 2) Goals & non-goals
+
+### Goals
+- Support **US state–specific** policy defaults and caps (start with 1 state, expand).
+- Keep the app **stateless** (no user data stored).
+- Make logic **explainable**: assumptions, caps applied, warnings, next checks.
+- Refactor into **modular, testable architecture** (separate calculation logic from UI).
+- Preserve current UX simplicity; new logic should not bloat UI code.
+
+### Non-goals (v1)
+- No accounts, no saved scenarios, no database.
+- No chat UI.
+- No LLM-driven calculation/policy interpretation.
+- No live baby product costs (explicitly deferred to v1.5).
+
+---
+
+## 3) Target users
+Primary:
+- Expecting parents in the US (salary-based planning).
+- Users who want clarity and "what drives the gap," not legal guarantees.
+
+Secondary:
+- Users comparing states (later).
+- SEO/content traffic (later).
+
+---
+
+## 4) Core user flow (v1)
+1. User selects **US state** (jurisdiction).
+2. User enters:
+   - salary / income
+   - leave start date (optional)
+   - optional overrides (leave weeks, paid percent, employer top-up)
+3. App:
+   - resolves state policy defaults
+   - applies caps/adjustments
+   - computes timeline + cashflow
+4. UI shows:
+   - paid vs unpaid timeline
+   - estimated cashflow gap / bridge needed
+   - assumptions + warnings + next checks
+   - optional narrated explanation (local LLM)
+
+---
+
+## 5) Architecture principles
+
+### Modular calculation pipeline
+The calculator separates concerns into pure, testable functions that run in sequence. This ensures:
+- Policy logic doesn't leak into React components
+- Rules are testable and composable
+- Explanations derive from the same logic as calculations
+- Adding new states requires config + minimal code changes
+
+### Simple, linear flow
+```
+User Inputs
+  ↓
+Apply Policy Defaults
+  ↓
+Validate & Apply Caps
+  ↓
+Calculate Timeline & Cashflow
+  ↓
+Generate Structured Explanation
+  ↓
+(Optional) Enhance with LLM Narration
+  ↓
+Return Result to UI
+```
+
+**Guarantees:**
+- All numeric outputs are deterministic and reproducible.
+- LLM never changes or generates numbers; it only rewrites explanations.
+
+---
+
+## 6) Core calculation function
+
+### Main entry point
+```typescript
+function calculateMaternityLeave(
+  inputs: UserInputs,
+  jurisdiction: JurisdictionId,
+  options?: CalculationOptions
+): CalculationResult
+```
+
+### Internal steps (as helper functions)
+
+#### 6.1 Policy Resolution
+**Purpose:** Load jurisdiction policy and apply defaults where user didn't override.
+
+```typescript
+function resolveScenario(
+  inputs: UserInputs,
+  policy: PolicyConfig
+): { scenario: Scenario, assumptions: Assumption[] }
+```
+
+**Output:** Complete scenario with all values filled + list of assumptions made.
+
+#### 6.2 Validation & Caps
+**Purpose:** Validate inputs, apply benefit caps, generate warnings.
+
+```typescript
+function validateAndApplyCaps(
+  scenario: Scenario,
+  policy: PolicyConfig
+): { validated: Scenario, warnings: Warning[], adjustments: Adjustment[] }
+```
+
+**Output:** Validated scenario + any warnings or adjustments made.
+
+#### 6.3 Timeline & Cashflow Calculation
+**Purpose:** Compute leave segments, weekly/monthly cashflow, savings needed.
+
+```typescript
+function computeLeaveBreakdown(
+  scenario: Scenario
+): LeaveBreakdown
+```
+
+**Output:** Timeline segments (paid/unpaid) and financial projections.
+
+#### 6.4 Explanation Generation
+**Purpose:** Generate structured, human-readable explanation from calculation artifacts.
+
+```typescript
+function buildExplanation(
+  breakdown: LeaveBreakdown,
+  assumptions: Assumption[],
+  warnings: Warning[],
+  adjustments: Adjustment[]
+): StructuredExplanation
+```
+
+**Output:** Organized explanation data (not prose—just structured bullets and sections).
+
+---
+
+## 7) Data model & contracts
+
+### Core types
+```typescript
+type JurisdictionId = 'US-CA' | 'US-NY' | 'US-GENERIC' | string;
+
+interface UserInputs {
+  salary: number;
+  leaveWeeks?: number;
+  paidPercent?: number;
+  employerTopUp?: number;
+  startDate?: string;
+}
+
+interface PolicyConfig {
+  jurisdictionId: JurisdictionId;
+  displayName: string;
+  currency: string;
+  defaults: {
+    paidWeeks: number;
+    paidPercent: number;
+    waitingDays?: number;
+  };
+  caps: {
+    maxPaidWeeks?: number;
+    maxWeeklyBenefit?: number;
+    maxTotalBenefit?: number;
+  };
+  eligibility?: {
+    minTenureMonths?: number;
+    minHoursWorked?: number;
+  };
+  sources?: string[];
+  notes?: string;
+}
+
+interface Scenario {
+  salary: number;
+  leaveWeeks: number;
+  paidPercent: number;
+  employerTopUp: number;
+  startDate?: Date;
+}
+
+interface Assumption {
+  field: string;
+  value: any;
+  reason: string;
+}
+
+interface Warning {
+  type: 'eligibility' | 'cap' | 'validation';
+  message: string;
+  severity: 'info' | 'warning' | 'error';
+}
+
+interface Adjustment {
+  field: string;
+  originalValue: any;
+  adjustedValue: any;
+  reason: string;
+}
+
+interface LeaveBreakdown {
+  totalWeeks: number;
+  paidWeeks: number;
+  unpaidWeeks: number;
+  weeklyIncome: number;
+  weeklyBenefit: number;
+  monthlyCashflow: MonthlyProjection[];
+  totalIncomeGap: number;
+  savingsNeeded: number;
+}
+
+interface StructuredExplanation {
+  summary: string;
+  assumptions: string[];
+  capsApplied: string[];
+  warnings: string[];
+  thingsToDoubleCheck: string[];
+}
+
+interface CalculationResult {
+  breakdown: LeaveBreakdown;
+  explanation: StructuredExplanation;
+  metadata: {
+    jurisdiction: JurisdictionId;
+    calculatedAt: Date;
+  };
+}
+```
+
+---
+
+## 8) Policy system (US-first)
+
+### Policy config principles
+- **Configuration over conditionals** where possible.
+- Each state is a config file + (optionally) a small set of reusable rule functions.
+
+### Policy files location
+```
+/domain/policies/
+  us-generic.ts
+  us-ca.ts
+  us-ny.ts
+  index.ts (exports getPolicyConfig(jurisdictionId))
+```
+
+### Rollout strategy
+- v1 ships with:
+  - `US-GENERIC` fallback
+  - 1 fully implemented state (recommend CA or NY)
+- Expand by adding more state configs with minimal code changes.
+
+---
+
+## 9) Optional LLM Narrator (v1 feature flag)
+
+### Purpose
+Transform structured explanation into friendly, conversational prose.
+
+### Critical constraints
+- **Must not introduce new numbers** or modify computed values.
+- Should output **structured JSON only** with predefined fields.
+- Runs **after** all calculations are complete (post-processor only).
+
+### Input to LLM
+```typescript
+interface NarrationInput {
+  jurisdiction: string;
+  userInputs: {
+    salary: number;
+    leaveWeeks: number;
+  };
+  calculationSummary: {
+    totalGap: number;
+    paidWeeks: number;
+    unpaidWeeks: number;
+  };
+  structuredExplanation: StructuredExplanation;
+  allowedNumbers: string[]; // for validation
+}
+```
+
+### LLM prompt structure
+```
+You are helping explain maternity leave calculations in a friendly way.
+
+CRITICAL RULES:
+- Do NOT generate any new numbers
+- Do NOT change any numbers from the input
+- Only rephrase the provided structured explanation into natural language
+
+Input data: [NarrationInput as JSON]
+
+Output ONLY valid JSON matching this schema:
+{
+  "friendlySummary": "2-3 sentence overview",
+  "whatDroveTheGap": ["point 1", "point 2", ...],
+  "thingsToDoubleCheck": ["check 1", "check 2", ...]
+}
+```
+
+### Output validation
+```typescript
+function validateNarration(
+  llmOutput: LLMNarration,
+  allowedNumbers: Set<string>
+): ValidationResult {
+  // Extract all numbers from LLM output
+  // Verify they all exist in allowedNumbers set
+  // Return pass/fail + any violations
+}
+```
+
+### Implementation approach
+```typescript
+async function enhanceWithNarration(
+  result: CalculationResult,
+  inputs: UserInputs
+): Promise<CalculationResult> {
+  if (!featureFlags.llmNarration) {
+    return result; // pass through
+  }
+  
+  const narrationInput = prepareNarrationInput(result, inputs);
+  const llmOutput = await callLocalLLM(narrationInput);
+  const validation = validateNarration(llmOutput, narrationInput.allowedNumbers);
+  
+  if (validation.safe) {
+    return { ...result, narration: llmOutput };
+  } else {
+    // Log violation, return original
+    console.warn('LLM narration failed validation', validation.violations);
+    return result;
+  }
+}
+```
+
+---
+
+## 10) Feature flags
+```typescript
+interface FeatureFlags {
+  llmNarration: boolean;        // default: false
+  babyCostEnrichment: boolean;  // default: false (v1.5)
+}
+```
+
+Flags control optional enhancements without affecting core calculation logic.
+
+---
+
+## 11) v1.5 placeholder: baby costs (deferred)
+Baby costs would be an optional enrichment function:
+- Deterministic estimator + (optional) price API later
+- Invoked only if `babyCostEnrichment` flag is enabled
+- Adds line items and totals to the result
+- Can be narrated by LLM if both flags are on
+
+**Not implemented in v1**; only type definitions and TODOs allowed.
+
+---
+
+## 12) Non-functional requirements
+- **Deterministic**: Same inputs always produce same numeric outputs.
+- **Testable**: All calculation functions are pure (no React imports, no side effects).
+- **Extensible**: Adding a new state requires:
+  - A new policy config file
+  - At most a small helper function for state-specific rules
+  - Zero UI changes
+- **Graceful degradation**: App works without LLM enabled.
+- **Type-safe**: Full TypeScript coverage for domain logic.
+
+---
+
+## 13) Testing strategy
+
+### Unit tests (must-have for v1)
+- Policy resolution with various override combinations
+- Cap application (benefit caps, week caps)
+- Cashflow calculations with edge cases
+- Explanation generation from various scenarios
+
+### Integration tests
+- Full calculation pipeline end-to-end
+- Multiple jurisdictions
+- Feature flag toggles
+
+### LLM narrator tests (if implemented)
+- Numeric validation (no new numbers)
+- Output schema validation
+- Fallback behavior when LLM fails
+
+---
+
+## 14) Success criteria
+
+### Product
+- Users can see assumptions, caps, and warnings clearly.
+- Users can answer "why is my benefit capped?" from the UI.
+- Calculator produces identical results for identical inputs.
+
+### Engineering
+- Calculator page is <200 lines (mostly UI rendering).
+- All calculation logic lives in `domain/` with zero React dependencies.
+- Policy logic is isolated and has >80% test coverage.
+- LLM can be turned off without breaking UX or correctness.
+- Adding a new state takes <1 hour (just config, no logic changes).
+
+---
+
+## 15) Milestones
+
+### Milestone A — Modular refactor foundation
+- Extract calculations into `domain/calculator/` pure modules
+- Implement `calculateMaternityLeave()` main function
+- Wire up to existing UI (maintain current UX)
+- Add unit tests for core functions
+
+**Exit criteria:** Calculator works exactly as before but with testable domain layer.
+
+### Milestone B — US policy layer
+- Add `JurisdictionId` + `PolicyConfig` types
+- Implement `US-GENERIC` + 1 real state (CA or NY)
+- Add policy resolution with defaults
+- Add cap application + warnings
+- Update UI to show assumptions/adjustments
+
+**Exit criteria:** Calculator adapts to selected state; explanations show where defaults/caps were applied.
+
+### Milestone C — Optional LLM narration
+- Feature-flag LLM narrator
+- Implement JSON schema output
+- Add numeric allowlist validation
+- Add graceful fallback when narration fails
+- UI toggle to enable/disable narration
+
+**Exit criteria:** LLM narration works but can be fully disabled; validation catches number hallucinations.
+
+---
+
+## 16) File structure (proposed)
+
+```
+/domain/
+  /calculator/
+    calculateMaternityLeave.ts    # Main entry point
+    resolveScenario.ts
+    validateAndApplyCaps.ts
+    computeLeaveBreakdown.ts
+    buildExplanation.ts
+  /policies/
+    types.ts                       # PolicyConfig interface
+    us-generic.ts
+    us-ca.ts
+    index.ts                       # getPolicyConfig()
+  /narration/                      # Optional LLM narrator
+    enhanceWithNarration.ts
+    validateNarration.ts
+  /types/
+    index.ts                       # All shared types
+    
+/lib/
+  featureFlags.ts
+  
+/app/
+  /calculator/
+    page.tsx                       # Thin UI layer
+    CalculatorForm.tsx
+    ResultsDisplay.tsx
+```
+
+---
+
+## 17) Migration path from current implementation
+
+1. **Create domain layer** (no breaking changes)
+   - Extract current calculation logic into pure functions
+   - Keep existing UI calling new functions
+   - Add tests
+
+2. **Add policy system** (additive)
+   - Implement policy configs
+   - Wire up jurisdiction selector
+   - Update calculations to use policies
+
+3. **Add explanations** (additive)
+   - Generate structured explanations
+   - Display in UI
+
+4. **Add LLM narrator** (optional, feature-flagged)
+   - Implement behind flag (default off)
+   - Add validation
+   - Add UI toggle
+
+Each step maintains working calculator throughout.
+
+---
+
+## 18) Open questions (intentionally parked)
+- Which state ships first (CA vs NY)?
+- Where does calculation run (client-only first vs server-validated endpoint)?
+- Local LLM hosting approach on Vercel (client-side WASM/WebGPU vs lightweight serverless inference)?
+- Should we add a simple cache for policy configs?
