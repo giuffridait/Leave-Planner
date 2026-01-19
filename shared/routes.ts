@@ -34,7 +34,37 @@ export const api = {
         404: errorSchemas.notFound,
       },
     }
-  }
+  },
+  narration: {
+    create: {
+      method: "POST" as const,
+      path: "/api/narration",
+      input: z.object({
+        jurisdiction: z.string(),
+        userInputs: z.object({
+          salary: z.number(),
+          leaveWeeks: z.number(),
+        }),
+        calculationSummary: z.object({
+          totalGap: z.number(),
+          paidWeeks: z.number(),
+          unpaidWeeks: z.number(),
+        }),
+        structuredExplanation: z.unknown(),
+      }),
+      responses: {
+        200: z.object({
+          friendlySummary: z.string(),
+          whatDroveTheGap: z.array(z.string()),
+          thingsToDoubleCheck: z.array(z.string()),
+        }),
+        400: errorSchemas.validation,
+        502: errorSchemas.internal.extend({
+          error: z.string().optional(),
+        }),
+      },
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {

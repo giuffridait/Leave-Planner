@@ -53,11 +53,41 @@ npm test
 ```
 
 ## Known gaps (intentionally deferred)
-- Milestone C (LLM narration) is not implemented.
+- LLM narration is optional and requires an API key plus env flag to enable.
 - Only `US-GENERIC` and `US-CA` are defined; additional states need configs.
 - Start date is collected but not used for timeline rendering.
 
+## Milestone C: LLM narration (implemented)
+
+### What was done
+- Added a narration feature flag with local storage override.
+- Implemented narration preparation, LLM call, validation, and safety fallback.
+- Added UI toggle and display for the AI explanation.
+- Narration calls now route through `/api/narration` to keep keys server-side.
+
+### Files added/updated
+- `client/src/lib/featureFlags.ts`
+- `client/src/domain/narration/types.ts`
+- `client/src/domain/narration/prepareNarrationInput.ts`
+- `client/src/domain/narration/callNarrationLLM.ts`
+- `client/src/domain/narration/validateNarration.ts`
+- `client/src/domain/narration/enhanceWithNarration.ts`
+- `client/src/components/NarrationToggle.tsx`
+- `client/src/components/NarrationDisplay.tsx`
+- `client/src/pages/Calculator.tsx`
+- `.env.local`
+
 ## Next steps (suggested)
 - Add another state policy (NY) and expand caps/eligibility coverage.
-- Implement LLM narration behind a feature flag with numeric allowlist validation.
 - Expand tests to cover explanation formatting and end-to-end scenarios.
+
+## LLM environment setup
+- `HUGGINGFACE_API_KEY` (or `HF_API_KEY`) is required on the server to enable narration calls.
+- `HF_MODEL_ID` (or `HUGGINGFACE_MODEL`) overrides the default model.
+- `VITE_ENABLE_LLM_NARRATION=true` turns the UI toggle on by default.
+- The server now falls back to in-memory plan storage if `DATABASE_URL` is not set.
+
+## Vercel deployment checklist
+- Set `HUGGINGFACE_API_KEY` and `HF_MODEL_ID` in Vercel project environment variables.
+- Set `VITE_ENABLE_LLM_NARRATION=true` if you want narration enabled by default.
+- Keep `NODE_ENV=production` to ensure debug errors are not returned to the client.

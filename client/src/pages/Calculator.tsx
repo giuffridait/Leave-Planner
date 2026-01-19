@@ -12,10 +12,15 @@ import { Label } from "@/components/ui/label";
 import { StepIndicator } from "@/components/StepIndicator";
 import { MoneyInput } from "@/components/MoneyInput";
 import { IncomeBenefitChart } from "@/components/ResultCharts";
+import { NarrationDisplay } from "@/components/NarrationDisplay";
+import { NarrationToggle } from "@/components/NarrationToggle";
 
 import { calculateMaternityLeave } from "@/domain/calculator/calculateMaternityLeave";
+import { enhanceWithNarration } from "@/domain/narration/enhanceWithNarration";
 import { getPolicyConfig, listPolicies } from "@/domain/policies";
 import type { JurisdictionId, UserInputs } from "@/domain/types";
+import type { NarrationResult } from "@/domain/narration/types";
+import { resolveLlmNarrationFlag } from "@/lib/featureFlags";
 
 const STEPS = ["Inputs", "Results"];
 const DEFAULT_SALARY = 65000;
@@ -44,6 +49,8 @@ function parseOptionalNumber(value: string): number | undefined {
 export default function Calculator() {
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(0);
+  const [narrationEnabled, setNarrationEnabled] = useState(() => resolveLlmNarrationFlag());
+  const [narrationResult, setNarrationResult] = useState<NarrationResult | undefined>(undefined);
 
   const initialPolicy = getPolicyConfig("US-GENERIC");
   const [formData, setFormData] = useState<FormState>({
@@ -72,6 +79,34 @@ export default function Calculator() {
     () => calculateMaternityLeave(inputs, formData.jurisdictionId),
     [inputs, formData.jurisdictionId],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!narrationEnabled || currentStep !== 2) {
+      setNarrationResult(undefined);
+      return undefined;
+    }
+
+    enhanceWithNarration(result, inputs)
+      .then((enhanced) => {
+        if (!cancelled) {
+          setNarrationResult(enhanced.narration);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setNarrationResult({
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [narrationEnabled, currentStep, result, inputs]);
 
   const nextStep = () => {
     if (currentStep < STEPS.length) {
@@ -174,11 +209,20 @@ export default function Calculator() {
                 data={formData}
                 policyName={policy.displayName}
                 policyNotes={policy.notes}
+                narrationEnabled={narrationEnabled}
+                onNarrationToggle={setNarrationEnabled}
                 onChange={setFormData}
                 onJurisdictionChange={handleJurisdictionChange}
               />
             )}
-            {currentStep === 2 && <ResultsStep policyName={policy.displayName} result={result} />}
+            {currentStep === 2 && (
+              <ResultsStep
+                policyName={policy.displayName}
+                result={result}
+                narrationEnabled={narrationEnabled}
+                narration={narrationResult}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -209,12 +253,16 @@ function InputsStep({
   data,
   policyName,
   policyNotes,
+  narrationEnabled,
+  onNarrationToggle,
   onChange,
   onJurisdictionChange,
 }: {
   data: FormState;
   policyName: string;
   policyNotes?: string;
+  narrationEnabled: boolean;
+  onNarrationToggle: (enabled: boolean) => void;
   onChange: Dispatch<SetStateAction<FormState>>;
   onJurisdictionChange: (value: JurisdictionId) => void;
 }) {
@@ -244,6 +292,8 @@ function InputsStep({
               {policyNotes ?? "State defaults are applied when fields are left blank."}
             </p>
           </div>
+
+          <NarrationToggle enabled={narrationEnabled} onToggle={onNarrationToggle} />
 
           <div className="space-y-2">
             <Label className="text-base">Annual Salary (Pre-tax)</Label>
@@ -312,9 +362,13 @@ function InputsStep({
 function ResultsStep({
   policyName,
   result,
+  narrationEnabled,
+  narration,
 }: {
   policyName: string;
   result: ReturnType<typeof calculateMaternityLeave>;
+  narrationEnabled: boolean;
+  narration?: NarrationResult;
 }) {
   const effectivePercent = result.breakdown.weeklyIncome
     ? (result.breakdown.weeklyBenefit / result.breakdown.weeklyIncome) * 100
@@ -408,6 +462,8 @@ function ResultsStep({
           <CardDescription>{result.explanation.summary}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 text-sm">
+          {narrationEnabled && <NarrationDisplay narration={narration} />}
+
           {hasAssumptions && (
             <div>
               <h4 className="font-semibold mb-2">Assumptions Applied</h4>
