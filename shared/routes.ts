@@ -15,6 +15,32 @@ export const errorSchemas = {
   }),
 };
 
+const babyCostLineSchema = z.object({
+  category: z.string(),
+  label: z.string(),
+  monthlyEstimate: z.number(),
+  note: z.string().optional(),
+});
+
+export const babyCostResponseSchema = z.object({
+  lines: z.array(babyCostLineSchema),
+  totalMonthly: z.number(),
+  totalForLeave: z.number(),
+  leaveMonths: z.number(),
+  /** "google-cse" when at least one line used a live-fetched price; "static-fallback" otherwise. */
+  source: z.enum(["google-cse", "static-fallback"]),
+  /** ISO date string of the most recent Google CSE fetch, or null for static-fallback. */
+  pricedAt: z.string().nullable(),
+});
+
+export type BabyCostLine = z.infer<typeof babyCostLineSchema>;
+export type BabyCostResponse = z.infer<typeof babyCostResponseSchema>;
+
+export const babyCostsQuerySchema = z.object({
+  jurisdiction: z.string(),
+  leaveWeeks: z.coerce.number().int().positive(),
+});
+
 export const api = {
   plans: {
     create: {
@@ -62,6 +88,16 @@ export const api = {
         502: errorSchemas.internal.extend({
           error: z.string().optional(),
         }),
+      },
+    },
+  },
+  babyCosts: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/baby-costs',
+      responses: {
+        200: babyCostResponseSchema,
+        400: errorSchemas.validation,
       },
     },
   },

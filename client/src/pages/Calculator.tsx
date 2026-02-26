@@ -21,6 +21,8 @@ import { getPolicyConfig, listPolicies } from "@/domain/policies";
 import type { JurisdictionId, UserInputs } from "@/domain/types";
 import type { NarrationResult } from "@/domain/narration/types";
 import { resolveLlmNarrationFlag } from "@/lib/featureFlags";
+import { detectJurisdiction } from "@/lib/geoDetect";
+import { BabyCostCard } from "@/components/BabyCostCard";
 
 const STEPS = ["Inputs", "Results"];
 const DEFAULT_SALARY = 65000;
@@ -52,7 +54,8 @@ export default function Calculator() {
   const [narrationEnabled, setNarrationEnabled] = useState(() => resolveLlmNarrationFlag());
   const [narrationResult, setNarrationResult] = useState<NarrationResult | undefined>(undefined);
 
-  const initialPolicy = getPolicyConfig("US-GENERIC");
+  const detectedJurisdiction = detectJurisdiction();
+  const initialPolicy = getPolicyConfig(detectedJurisdiction);
   const [formData, setFormData] = useState<FormState>({
     jurisdictionId: initialPolicy.jurisdictionId,
     salary: DEFAULT_SALARY,
@@ -213,6 +216,7 @@ export default function Calculator() {
                 onNarrationToggle={setNarrationEnabled}
                 onChange={setFormData}
                 onJurisdictionChange={handleJurisdictionChange}
+                liveResult={result}
               />
             )}
             {currentStep === 2 && (
@@ -221,6 +225,8 @@ export default function Calculator() {
                 result={result}
                 narrationEnabled={narrationEnabled}
                 narration={narrationResult}
+                jurisdiction={formData.jurisdictionId}
+                leaveWeeks={formData.leaveWeeks ?? policy.defaults.paidWeeks}
               />
             )}
           </motion.div>
@@ -257,6 +263,7 @@ function InputsStep({
   onNarrationToggle,
   onChange,
   onJurisdictionChange,
+  liveResult,
 }: {
   data: FormState;
   policyName: string;
@@ -265,12 +272,41 @@ function InputsStep({
   onNarrationToggle: (enabled: boolean) => void;
   onChange: Dispatch<SetStateAction<FormState>>;
   onJurisdictionChange: (value: JurisdictionId) => void;
+  liveResult: ReturnType<typeof calculateMaternityLeave>;
 }) {
+  const liveGap = liveResult.breakdown.savingsNeeded;
+  const liveWeeklyBenefit = liveResult.breakdown.weeklyBenefit;
+  const liveWeeklyIncome = liveResult.breakdown.weeklyIncome;
+  const livePaidWeeks = liveResult.breakdown.paidWeeks;
+
   return (
     <div className="space-y-8">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold font-display text-foreground">Plan your leave.</h2>
         <p className="text-muted-foreground mt-2">Pick a state policy and enter your salary details.</p>
+      </div>
+
+      {/* Live estimate preview */}
+      <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="text-center sm:text-left">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Live estimate — income gap</p>
+          <p className="text-3xl font-bold font-display text-primary">{formatCurrency(liveGap)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">over {liveResult.breakdown.totalWeeks} weeks</p>
+        </div>
+        <div className="flex gap-6 text-center text-sm">
+          <div>
+            <p className="font-semibold text-foreground">{formatCurrency(liveWeeklyBenefit)}<span className="font-normal text-muted-foreground">/wk</span></p>
+            <p className="text-xs text-muted-foreground">benefit</p>
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">{formatCurrency(liveWeeklyIncome)}<span className="font-normal text-muted-foreground">/wk</span></p>
+            <p className="text-xs text-muted-foreground">normal pay</p>
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">{livePaidWeeks}<span className="font-normal text-muted-foreground"> wks</span></p>
+            <p className="text-xs text-muted-foreground">paid</p>
+          </div>
+        </div>
       </div>
 
       <Card className="border-none shadow-lg">
@@ -364,11 +400,15 @@ function ResultsStep({
   result,
   narrationEnabled,
   narration,
+  jurisdiction,
+  leaveWeeks,
 }: {
   policyName: string;
   result: ReturnType<typeof calculateMaternityLeave>;
   narrationEnabled: boolean;
   narration?: NarrationResult;
+  jurisdiction: string;
+  leaveWeeks: number;
 }) {
   const effectivePercent = result.breakdown.weeklyIncome
     ? (result.breakdown.weeklyBenefit / result.breakdown.weeklyIncome) * 100
@@ -412,6 +452,8 @@ function ResultsStep({
           </div>
         </CardContent>
       </Card>
+
+      <BabyCostCard jurisdiction={jurisdiction} leaveWeeks={leaveWeeks} />
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
