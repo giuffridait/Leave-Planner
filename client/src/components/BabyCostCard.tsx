@@ -22,7 +22,7 @@ export function BabyCostCard({ jurisdiction, leaveWeeks }: BabyCostCardProps) {
           Baby Product Costs
         </CardTitle>
         <CardDescription>
-          Estimated recurring monthly spend for essential baby products
+          Monthly cost estimates for essential baby supplies during your leave
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -11,26 +11,7 @@ export function NarrationDisplay({ narration }: NarrationDisplayProps) {
   }
 
   if (!narration.success || !narration.narration) {
-    const showDebug = typeof import.meta !== "undefined" && (import.meta as any).env?.DEV;
-
-    return (
-      <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
-        <p>AI explanation unavailable. Showing structured explanation instead.</p>
-        {showDebug && narration.error && (
-          <p className="mt-2 text-xs text-yellow-900">Debug: {narration.error}</p>
-        )}
-        {showDebug && narration.validationIssues && narration.validationIssues.length > 0 && (
-          <details className="mt-2 text-xs text-yellow-900">
-            <summary className="cursor-pointer">Validation issues</summary>
-            <ul className="mt-1 space-y-1 pl-4">
-              {narration.validationIssues.map((issue) => (
-                <li key={issue}>{issue}</li>
-              ))}
-            </ul>
-          </details>
-        )}
-      </div>
-    );
+    return null;
   }
 
   return (
