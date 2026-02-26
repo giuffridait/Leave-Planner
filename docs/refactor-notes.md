@@ -91,3 +91,63 @@ npm test
 - Set `HUGGINGFACE_API_KEY` and `HF_MODEL_ID` in Vercel project environment variables.
 - Set `VITE_ENABLE_LLM_NARRATION=true` if you want narration enabled by default.
 - Keep `NODE_ENV=production` to ensure debug errors are not returned to the client.
+
+---
+
+## Milestone D: Baby product cost enrichment
+
+### What was done
+- Added a `baby_product_prices` DB table (one row per product category, upserted weekly).
+- Server fetches live retail prices via Google Custom Search API on startup, then re-checks every 24 h; if data is > 7 days old it re-fetches.
+- When no live price is available the server falls back to hardcoded national-average baselines.
+- `GET /api/baby-costs?jurisdiction=<id>&leaveWeeks=<n>` returns per-category monthly estimates plus a total and a per-leave total.
+- `BabyCostCard` component added to the Results step, gated behind the `babyCostEnrichment` feature flag.
+
+### Files added/updated
+- `shared/schema.ts` — `babyProductPrices` table
+- `shared/routes.ts` — route definition + `BabyCostResponse` type
+- `server/babyCosts/productQueries.ts` — canonical SKU queries + static fallbacks
+- `server/babyCosts/googlePriceSearch.ts` — Google CSE fetch + multi-strategy price extraction
+- `server/babyCosts/getCostEstimate.ts` — DB read with 7-day freshness check, falls back to static
+- `server/babyCosts/weeklyRefresh.ts` — startup scheduler + 24 h interval
+- `server/routes.ts` — registers `GET /api/baby-costs`, calls `schedulePriceRefresh()`
+- `client/src/lib/featureFlags.ts` — `babyCostEnrichment` flag
+- `client/src/hooks/use-baby-costs.ts` — React Query hook (24 h staleTime)
+- `client/src/components/BabyCostCard.tsx` — card with per-line breakdown + source attribution
+- `client/src/pages/Calculator.tsx` — wires `BabyCostCard` into `ResultsStep`
+
+### How prices are communicated to the user
+The `BabyCostCard` shows a small attribution line at the bottom:
+- **Live prices**: "Prices from Google Shopping · updated \<date\>"
+- **Static fallback**: "Based on national averages — enable Google CSE for live prices"
+
+This means users always know whether they are seeing live retail data or estimates, without
+needing a modal or extra screen.
+
+### Google CSE API costs
+| Tier | Queries/day | Monthly cost |
+|---|---|---|
+| Free | 100 | $0 |
+| Paid overage | 101 + | $5 per 1,000 |
+
+**This feature uses ~5 queries per week** (one per product category, refreshed weekly).
+The free tier (100/day) will never be exceeded in normal operation.
+
+### Local development setup
+1. In `.env.local`, uncomment and fill in:
+   ```
+   GOOGLE_CSE_API_KEY=<your key>
+   GOOGLE_CSE_ID=<your engine id>
+   VITE_ENABLE_BABY_COSTS=true
+   ```
+2. Run `npm run db:push` to create the `baby_product_prices` table.
+3. Restart the dev server — prices are fetched in the background on startup.
+
+To get credentials (~10 minutes, no billing required for free tier):
+- **API key**: [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials → Create credentials → API key. Then enable "Custom Search API" for the project.
+- **Search engine ID**: [cse.google.com](https://programmablesearchengine.google.com) → New search engine → add `walmart.com`, `target.com`, `amazon.com` → copy "Search engine ID".
+
+### Vercel deployment checklist
+- Add `GOOGLE_CSE_API_KEY` and `GOOGLE_CSE_ID` in Vercel project → Settings → Environment Variables.
+- Set `VITE_ENABLE_BABY_COSTS=true` to enable the card for all users (or omit to keep it off by default).
+- `DATABASE_URL` must be set; without it the server skips DB writes and returns static-fallback estimates only.
