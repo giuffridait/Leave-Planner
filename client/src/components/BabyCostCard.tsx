@@ -1,6 +1,7 @@
-import { ShoppingCart, RefreshCw, AlertCircle } from "lucide-react";
+import { ShoppingCart, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useBabyCosts } from "@/hooks/use-baby-costs";
+import type { BabyCostResponse } from "@shared/routes";
 
 function formatCurrency(value: number): string {
   return `$${Math.round(value).toLocaleString()}`;
@@ -11,8 +12,30 @@ interface BabyCostCardProps {
   leaveWeeks: number;
 }
 
+const STATIC_LINES: BabyCostResponse["lines"] = [
+  { category: "diapers", label: "Diapers", monthlyEstimate: 60, note: "Newborns use 8–12/day; decreases after ~3 months" },
+  { category: "wipes", label: "Baby wipes", monthlyEstimate: 15 },
+  { category: "formula", label: "Formula (if formula-feeding)", monthlyEstimate: 80, note: "Skip if breastfeeding exclusively" },
+  { category: "wash", label: "Baby wash & shampoo", monthlyEstimate: 4 },
+  { category: "clothing", label: "Onesies & bodysuits", monthlyEstimate: 20, note: "Babies outgrow sizes quickly; hand-me-downs cut this significantly" },
+];
+
+function buildFallback(leaveWeeks: number): BabyCostResponse {
+  const leaveMonths = Math.round((leaveWeeks / 4.333) * 10) / 10;
+  const totalMonthly = STATIC_LINES.reduce((sum, l) => sum + l.monthlyEstimate, 0);
+  return {
+    lines: STATIC_LINES,
+    totalMonthly,
+    totalForLeave: Math.round(totalMonthly * leaveMonths * 100) / 100,
+    leaveMonths,
+    source: "static-fallback",
+    pricedAt: null,
+  };
+}
+
 export function BabyCostCard({ jurisdiction, leaveWeeks }: BabyCostCardProps) {
-  const { data, isLoading, isError } = useBabyCosts(jurisdiction, leaveWeeks);
+  const { data: apiData, isLoading, isError } = useBabyCosts(jurisdiction, leaveWeeks);
+  const data = apiData ?? (isError ? buildFallback(leaveWeeks) : undefined);
 
   return (
     <Card>
@@ -30,13 +53,6 @@ export function BabyCostCard({ jurisdiction, leaveWeeks }: BabyCostCardProps) {
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
             <RefreshCw className="w-4 h-4 animate-spin" />
             Fetching current prices…
-          </div>
-        )}
-
-        {isError && (
-          <div className="flex items-center gap-2 text-sm text-destructive py-4">
-            <AlertCircle className="w-4 h-4" />
-            Could not load price data — showing estimates.
           </div>
         )}
 
