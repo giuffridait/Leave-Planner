@@ -13,11 +13,11 @@ interface BabyCostCardProps {
 }
 
 const STATIC_LINES: BabyCostResponse["lines"] = [
-  { category: "diapers", label: "Diapers", monthlyEstimate: 60, note: "Newborns use 8–12/day; decreases after ~3 months" },
-  { category: "wipes", label: "Baby wipes", monthlyEstimate: 15 },
-  { category: "formula", label: "Formula (if formula-feeding)", monthlyEstimate: 80, note: "Skip if breastfeeding exclusively" },
-  { category: "wash", label: "Baby wash & shampoo", monthlyEstimate: 4 },
-  { category: "clothing", label: "Onesies & bodysuits", monthlyEstimate: 20, note: "Babies outgrow sizes quickly; hand-me-downs cut this significantly" },
+  { category: "diapers", label: "Diapers", monthlyEstimate: 60, note: "Average ~8–12 changes/day for newborns, tapering after 3 months" },
+  { category: "wipes", label: "Baby wipes", monthlyEstimate: 15, note: "One large pack per month on average" },
+  { category: "formula", label: "Formula (if formula-feeding)", monthlyEstimate: 320, note: "~4 cans/month for a formula-fed newborn; skip entirely if breastfeeding" },
+  { category: "wash", label: "Baby wash, shampoo & lotion", monthlyEstimate: 25, note: "Averaged across wash, shampoo, lotion, and diaper cream" },
+  { category: "clothing", label: "Onesies, sleepers & bodysuits", monthlyEstimate: 75, note: "Babies cycle through ~4 sizes in year one — multiple outfits needed daily; hand-me-downs cut this significantly" },
 ];
 
 function buildFallback(leaveWeeks: number): BabyCostResponse {
@@ -87,8 +87,8 @@ export function BabyCostCard({ jurisdiction, leaveWeeks }: BabyCostCardProps) {
 
             <p className="text-xs text-muted-foreground/60 pt-1">
               {data.source === "google-cse"
-                ? `Prices from Google Shopping${data.pricedAt ? ` · updated ${new Date(data.pricedAt).toLocaleDateString()}` : ""}`
-                : "Based on national averages — enable Google CSE for live prices"}
+                ? `Live prices from Walmart, Target & Amazon via Google Shopping${data.pricedAt ? ` · updated ${new Date(data.pricedAt).toLocaleDateString()}` : ""}`
+                : "Average U.S. retail prices · BLS Consumer Expenditure Survey & major retailer data · Actual costs vary by brand, region, and feeding method"}
             </p>
           </div>
         )}
