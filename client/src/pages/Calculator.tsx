@@ -20,7 +20,7 @@ import { enhanceWithNarration } from "@/domain/narration/enhanceWithNarration";
 import { getPolicyConfig, listPolicies } from "@/domain/policies";
 import type { JurisdictionId, UserInputs } from "@/domain/types";
 import type { NarrationResult } from "@/domain/narration/types";
-import { resolveLlmNarrationFlag, resolveBabyCostsFlag } from "@/lib/featureFlags";
+import { resolveLlmNarrationFlag } from "@/lib/featureFlags";
 import { detectJurisdiction } from "@/lib/geoDetect";
 import { BabyCostCard } from "@/components/BabyCostCard";
 
@@ -410,7 +410,6 @@ function ResultsStep({
   jurisdiction: string;
   leaveWeeks: number;
 }) {
-  const babyCostsEnabled = resolveBabyCostsFlag();
   const effectivePercent = result.breakdown.weeklyIncome
     ? (result.breakdown.weeklyBenefit / result.breakdown.weeklyIncome) * 100
     : 0;
@@ -454,9 +453,7 @@ function ResultsStep({
         </CardContent>
       </Card>
 
-      {babyCostsEnabled && (
-        <BabyCostCard jurisdiction={jurisdiction} leaveWeeks={leaveWeeks} />
-      )}
+      <BabyCostCard jurisdiction={jurisdiction} leaveWeeks={leaveWeeks} />
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card>

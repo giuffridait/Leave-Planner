@@ -2,7 +2,7 @@ import { db } from "../db";
 import { babyProductPrices } from "@shared/schema";
 import { PRODUCT_QUERIES } from "./productQueries";
 import { searchProductPrice } from "./googlePriceSearch";
-import { log } from "../index";
+import { log } from "../log";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
