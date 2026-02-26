@@ -56,13 +56,15 @@ export const PRODUCT_QUERIES: ProductQuery[] = [
 export const STATIC_FALLBACK_MONTHLY: Record<string, number> = {
   diapers: 60,
   wipes: 15,
-  formula: 80,
-  wash: 4,
-  clothing: 20,
+  formula: 320,
+  wash: 25,
+  clothing: 75,
 };
 
 export const PRODUCT_NOTES: Record<string, string> = {
-  formula: "Skip if breastfeeding exclusively",
-  diapers: "Newborns use 8–12/day; decreases after ~3 months",
-  clothing: "Babies outgrow sizes quickly; hand-me-downs cut this significantly",
+  diapers: "Average ~8–12 changes/day for newborns, tapering after 3 months",
+  wipes: "One large pack per month on average",
+  formula: "~4 cans/month for a formula-fed newborn; skip entirely if breastfeeding",
+  wash: "Averaged across wash, shampoo, lotion, and diaper cream",
+  clothing: "Babies cycle through ~4 sizes in year one — multiple outfits needed daily; hand-me-downs cut this significantly",
 };
