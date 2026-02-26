@@ -20,8 +20,9 @@ import { enhanceWithNarration } from "@/domain/narration/enhanceWithNarration";
 import { getPolicyConfig, listPolicies } from "@/domain/policies";
 import type { JurisdictionId, UserInputs } from "@/domain/types";
 import type { NarrationResult } from "@/domain/narration/types";
-import { resolveLlmNarrationFlag } from "@/lib/featureFlags";
+import { resolveLlmNarrationFlag, resolveBabyCostsFlag } from "@/lib/featureFlags";
 import { detectJurisdiction } from "@/lib/geoDetect";
+import { BabyCostCard } from "@/components/BabyCostCard";
 
 const STEPS = ["Inputs", "Results"];
 const DEFAULT_SALARY = 65000;
@@ -224,6 +225,8 @@ export default function Calculator() {
                 result={result}
                 narrationEnabled={narrationEnabled}
                 narration={narrationResult}
+                jurisdiction={formData.jurisdictionId}
+                leaveWeeks={formData.leaveWeeks ?? policy.defaults.paidWeeks}
               />
             )}
           </motion.div>
@@ -397,12 +400,17 @@ function ResultsStep({
   result,
   narrationEnabled,
   narration,
+  jurisdiction,
+  leaveWeeks,
 }: {
   policyName: string;
   result: ReturnType<typeof calculateMaternityLeave>;
   narrationEnabled: boolean;
   narration?: NarrationResult;
+  jurisdiction: string;
+  leaveWeeks: number;
 }) {
+  const babyCostsEnabled = resolveBabyCostsFlag();
   const effectivePercent = result.breakdown.weeklyIncome
     ? (result.breakdown.weeklyBenefit / result.breakdown.weeklyIncome) * 100
     : 0;
@@ -445,6 +453,10 @@ function ResultsStep({
           </div>
         </CardContent>
       </Card>
+
+      {babyCostsEnabled && (
+        <BabyCostCard jurisdiction={jurisdiction} leaveWeeks={leaveWeeks} />
+      )}
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
